@@ -11,30 +11,67 @@
 
 int main(int argc, char *argv[]) 
 {
-	printf("Welcome to the terminal.\n>");
+	FILE *input = stdin;
+		// Used to keep track of which buffer should be read in (added for scripting purposes)
+	char *tokens[100]; 
+		// An array storing argvs for the program to be executed
+	char commands[80]; // Stores the string entered on the 'command line'
+		// Note - command must be kept intact due to the way strtok functions!
+	int times_run = 0;
+
+	printf("Welcome to the terminal.\n");
 	catch_signals();
-	
-	while(1) 
+
+
+	do
 	{
-		char *tokens[100]; 
-			// An array storing argvs for the program to be executed
-		char command[80]; // Stores the string entered on the 'command line'
-			// Note - command must be kept intact due to the way strtok functions!
-		get_commands(command);
-		tokenize(command, tokens);
-		if(check_commands(tokens) == 1) continue;
-		execute(tokens);
-		
-	}
-		
+
+		if (times_run >= 1) 
+		{
+			commands[strlen(commands) - 1] = '\0';
+			tokenize(commands, tokens);
+			check_commands(tokens);
+		}
+		pid_t pid = fork();
+		if(pid > 0) 
+		{ 	// Parent; prompt for new command
+			printf(">");
+			if (argc > 1 && times_run == 0) 
+			{
+				FILE *script = fopen(argv[1], "r");
+				input = script;
+				times_run++;
+				continue;
+			}
+			
+			
+			int status;
+			wait(&status);
+			times_run++;
+		}
+
+		else if (pid == 0 && times_run >=1) 
+		{ 	// This program is child process
+			if (execvp(tokens[0], tokens) == -1) 
+			{
+				error("Unable to run command, please try again.");
+			}
+		}	
+
+		else //if (pid < 0)
+		{				// Error, quit child process
+			exit(1);
+		}
+
+	} while (fgets(commands, 100, input) != NULL);
+
 	return 0;
 }
 
 void get_commands(char commands[80])
 	// Call this function to read in commands
 {
-	fgets(commands, 100, stdin);
-	commands[strlen(commands) - 1] = '\0';
+	
 }
 
 int check_commands(char *tokens[100])
@@ -52,7 +89,6 @@ int check_commands(char *tokens[100])
 void tokenize(char commands[80], char *tokens[100])
 	// Takes a pointer to a space to store a token array and a pointer to the command string ,
 	// converts the command into tokens, and adds them into the token array.
-
 {
 	int i = 0;	
 	tokens[i] = strtok(commands, " "); 
@@ -64,23 +100,23 @@ void tokenize(char commands[80], char *tokens[100])
 	}
 }
 
-void execute(char *tokens[100]) 
+/* void execute(char *tokens[100], int *argc, int *called_with_script) 
 	// Takes an array of argvs and uses them to start a child process
 {
 	pid_t pid = fork();
 	if (pid == 0) 
 		{ 	// This program is child process
-			if (check_commands(tokens) == 0) 
+			if (execvp(tokens[0], tokens) == -1) 
 			{
-				if (execvp(tokens[0], tokens) == -1) 
-				{
-					error("Unable to run command, please try again.");
-				}
+				error("Unable to run command, please try again.");
 			}
 		}
 
 		else if(pid > 0) 
 		{ 	// Parent; prompt for new command
+			if (argc > 1) {
+				called_with_script = 1;
+			}
 			printf(">");
 			int status;
 			wait(&status);
@@ -91,7 +127,7 @@ void execute(char *tokens[100])
 			error("Unable to fork process.");
 		}
 }
-
+*/
 
 
 ////	Error handling and signal processing	////

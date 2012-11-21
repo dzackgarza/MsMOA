@@ -1,3 +1,4 @@
-echo 'Script run successfully'
-exit
+ls
+ls
+who
 
